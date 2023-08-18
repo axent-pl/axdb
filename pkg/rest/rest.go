@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +27,7 @@ func (s *Service[IT, MT, DT]) Get(c *gin.Context) {
 	key := c.Param("key")
 	rec, err := s.table.Read(key)
 	if err != nil {
-		log.Printf("ERROR Service.Get %v", err)
+		c.AbortWithError(http.StatusNotFound, err)
 		return
 	}
 
@@ -39,11 +38,11 @@ func (s *Service[IT, MT, DT]) Put(c *gin.Context) {
 	var val DT
 	key := c.Param("key")
 	if err := c.BindJSON(&val); err != nil {
-		log.Printf("ERROR Service.Put %v", err)
+		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 	if err := s.table.InsertOrUpdate(key, val); err != nil {
-		log.Printf("ERROR Service.Put %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 	c.IndentedJSON(http.StatusOK, val)

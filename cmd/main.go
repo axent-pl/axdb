@@ -10,8 +10,7 @@ import (
 )
 
 type Data struct {
-	Name    string `json:"name" maxBytes:"100"`
-	Comment string `json:"comment" maxBytes:"100"`
+	Value string `json:"value" maxBytes:"1024"`
 }
 
 func main() {
@@ -21,8 +20,8 @@ func main() {
 	table.Open()
 	defer table.Close()
 
-	data1 := &Data{Name: "John", Comment: "Nice"}
-	data2 := &Data{Name: "John", Comment: "Nice2333ssssssss"}
+	data1 := &Data{Value: "Data 1 value"}
+	data2 := &Data{Value: "Data 2 value"}
 	if err := table.Insert("key1", *data1); err != nil {
 		log.Printf("error inserting %v, %v", *data1, err)
 	}
