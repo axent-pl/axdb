@@ -61,6 +61,21 @@ func (tab *Table[IT, MT, DT]) Update(index IT, data DT) error {
 	return fmt.Errorf("record with index %v does not exist", index)
 }
 
+func (tab *Table[IT, MT, DT]) InsertOrUpdate(index IT, data DT) error {
+	tab.mutex.Lock()
+	defer tab.mutex.Unlock()
+
+	if rec, ok := tab.records[index]; ok {
+		rec.Data = data
+		tab.storage.Store(rec)
+	} else {
+		rec := NewRecord[IT, MT, DT](index, data)
+		tab.records[index] = rec
+		tab.storage.Store(rec)
+	}
+	return nil
+}
+
 func (tab *Table[IT, MT, DT]) Delete(index IT) error {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()

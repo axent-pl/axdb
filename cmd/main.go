@@ -1,10 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
+	"github.com/gin-gonic/gin"
+	"github.com/prondos/axdb/pkg/db"
 	"github.com/prondos/axdb/pkg/filestorage"
+	"github.com/prondos/axdb/pkg/rest"
 )
 
 type Data struct {
@@ -13,7 +15,10 @@ type Data struct {
 }
 
 func main() {
-	table := filestorage.NewTable[string, Data]("../storage")
+	storage := filestorage.NewFileStorage[string, filestorage.FileStorageMetadata, Data]("../storage")
+	table := db.NewTable[string, filestorage.FileStorageMetadata, Data](storage)
+	service := rest.NewService[filestorage.FileStorageMetadata, Data](table)
+	table.Open()
 	defer table.Close()
 
 	data1 := &Data{Name: "John", Comment: "Nice"}
@@ -25,10 +30,9 @@ func main() {
 		log.Printf("error inserting %v, %v", *data2, err)
 	}
 
-	indices := table.List()
-	for _, index := range indices {
-		rec, _ := table.Read(index)
-		fmt.Printf("record[%v] := %v\n", index, rec)
-	}
-
+	router := gin.Default()
+	router.GET("/items", service.Index)
+	router.GET("/items/:key", service.Get)
+	router.PUT("/items/:key", service.Put)
+	router.Run("localhost:6600")
 }
