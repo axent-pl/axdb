@@ -1,2 +1,4 @@
 # axdb
-Simple database engine
+
+This project was created to train myself in Go.
+
