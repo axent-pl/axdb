@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_PadBytes(t *testing.T) {
+func TestPadBytes(t *testing.T) {
 	type args struct {
 		inputBytes []byte
 		blockSize  int
@@ -109,4 +109,42 @@ func TestGetBlockSize(t *testing.T) {
 			t.Error("GetBlockSize() expected error got nil")
 		}
 	})
+}
+
+func TestToBytesWithSize(t *testing.T) {
+	type args struct {
+		o any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		want1   []byte
+		wantErr bool
+	}{
+		{
+			name: "test empty string",
+			args: args{
+				o: "",
+			},
+			want:    []byte{3, 12, 0, 0},
+			want1:   []byte{4, 0, 0, 0, 0, 0, 0, 0},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := ToBytesWithSize(tt.args.o)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ToBytesWithSize() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToBytesWithSize() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("ToBytesWithSize() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
 }

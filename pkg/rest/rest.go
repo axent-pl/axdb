@@ -1,7 +1,13 @@
 package rest
 
 import (
+	"context"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prondos/axdb/pkg/db"
@@ -9,6 +15,60 @@ import (
 
 type Service[IT comparable, MT any, DT any] struct {
 	table *db.Table[string, MT, DT]
+}
+
+type Server[IT comparable, MT any, DT any] struct {
+	service *Service[IT, MT, DT]
+}
+
+func NewServer[MT any, DT any](service *Service[string, MT, DT]) *Server[string, MT, DT] {
+	server := &Server[string, MT, DT]{service: service}
+	return server
+}
+
+func (s *Server[IT, MT, DT]) Start(ctx context.Context) error {
+	// Initialize the Gin router.
+	router := gin.Default()
+
+	// Define routes for the REST API.
+	router.GET("/items", s.service.Index)
+	router.GET("/items/:key", s.service.Get)
+	router.PUT("/items/:key", s.service.Put)
+
+	// Initialize HTTP server
+	httpServer := &http.Server{
+		Addr:    ":8080",
+		Handler: router,
+	}
+
+	// Initialize channels handling HTTP server shutdown
+	quit := make(chan os.Signal)
+	done := make(chan error)
+
+	// Wait for the SIGINT or SIGTERM signals
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start HTTP server
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			done <- err
+		}
+	}()
+
+	for {
+		select {
+		// HTTP server stopped by itself
+		case err := <-done:
+			log.Printf("HTTP server stopped by itself: %v\n", err)
+			return err
+		// Received SIGINT or SIGTERM signal
+		case <-quit:
+			log.Print("HTTP server stopped by signal\n")
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return httpServer.Shutdown(ctx)
+		}
+	}
 }
 
 func NewService[MT any, DT any](table *db.Table[string, MT, DT]) *Service[string, MT, DT] {

@@ -1,9 +1,10 @@
 package main
 
 import (
-	"log"
+	"context"
+	"os"
+	"path/filepath"
 
-	"github.com/gin-gonic/gin"
 	"github.com/prondos/axdb/pkg/db"
 	"github.com/prondos/axdb/pkg/filestorage"
 	"github.com/prondos/axdb/pkg/rest"
@@ -13,25 +14,35 @@ type Data struct {
 	Value string `json:"value" maxBytes:"1024"`
 }
 
+var (
+	server  *rest.Server[string, filestorage.FileStorageMetadata, Data]
+	service *rest.Service[string, filestorage.FileStorageMetadata, Data]
+	table   *db.Table[string, filestorage.FileStorageMetadata, Data]
+)
+
+func init() {
+	cwd, _ := os.Getwd()
+	// Initialize the file storage for the application.
+	storage := filestorage.NewFileStorage[string, filestorage.FileStorageMetadata, Data](filepath.Join(cwd, "storage"))
+
+	// Create a new database table using the initialized file storage.
+	table = db.NewTable[string, filestorage.FileStorageMetadata, Data](storage)
+
+	// Create a new REST service using the created database table.
+	service = rest.NewService[filestorage.FileStorageMetadata, Data](table)
+
+	// Create a new REST server
+	server = rest.NewServer[filestorage.FileStorageMetadata, Data](service)
+}
+
 func main() {
-	storage := filestorage.NewFileStorage[string, filestorage.FileStorageMetadata, Data]("../storage")
-	table := db.NewTable[string, filestorage.FileStorageMetadata, Data](storage)
-	service := rest.NewService[filestorage.FileStorageMetadata, Data](table)
+	// Open the database table.
 	table.Open()
 	defer table.Close()
 
-	data1 := &Data{Value: "Data 1 value"}
-	data2 := &Data{Value: "Data 2 value"}
-	if err := table.Insert("key1", *data1); err != nil {
-		log.Printf("error inserting %v, %v", *data1, err)
+	// start the server
+	err := server.Start(context.Background())
+	if err != nil {
+		panic(err)
 	}
-	if err := table.Insert("key2", *data2); err != nil {
-		log.Printf("error inserting %v, %v", *data2, err)
-	}
-
-	router := gin.Default()
-	router.GET("/items", service.Index)
-	router.GET("/items/:key", service.Get)
-	router.PUT("/items/:key", service.Put)
-	router.Run("localhost:6600")
 }
