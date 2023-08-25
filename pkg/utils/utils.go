@@ -41,22 +41,18 @@ func FromReader[DT any](reader io.Reader) (DT, error) {
 }
 
 func ToBytes(o any) ([]byte, error) {
-	switch reflect.TypeOf(o).Kind() {
-	case reflect.Int, reflect.Int64, reflect.Uint64:
-		buf := new(bytes.Buffer)
-		err := binary.Write(buf, binary.LittleEndian, o)
-		if err != nil {
-			return nil, err
-		}
-		return buf.Bytes(), nil
-	default:
-		var buf bytes.Buffer
-		enc := gob.NewEncoder(&buf)
+	simpleBuffer := new(bytes.Buffer)
+	err := binary.Write(simpleBuffer, binary.LittleEndian, o)
+	if err != nil {
+		complexBuffer := new(bytes.Buffer)
+		enc := gob.NewEncoder(complexBuffer)
 		if err := enc.Encode(o); err != nil {
 			return nil, err
 		}
-		return buf.Bytes(), nil
+		return complexBuffer.Bytes(), nil
 	}
+	return simpleBuffer.Bytes(), nil
+
 }
 
 func ToBytesWithSize(o any) ([]byte, []byte, error) {
