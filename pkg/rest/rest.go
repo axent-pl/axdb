@@ -21,7 +21,7 @@ type Server[IT comparable, DT any] struct {
 	service *Service[IT, DT]
 }
 
-func NewServer[MT any, DT any](service *Service[string, DT]) *Server[string, DT] {
+func NewServer[DT any](service *Service[string, DT]) *Server[string, DT] {
 	server := &Server[string, DT]{service: service}
 	return server
 }
@@ -71,7 +71,7 @@ func (s *Server[IT, DT]) Start(ctx context.Context) error {
 	}
 }
 
-func NewService[MT any, DT any](table *db.Table[string, DT]) *Service[string, DT] {
+func NewService[DT any](table *db.Table[string, DT]) *Service[string, DT] {
 	s := &Service[string, DT]{
 		table: table,
 	}

@@ -15,14 +15,18 @@ func (p *FileStorage[IT, DT]) LoadAll() []*db.Record[IT, DT] {
 
 	for {
 		index, offset, err := p.indexFromReader(p.IndexReader)
-		record := &db.Record[IT, DT]{
-			Index: index,
-		}
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			panic(fmt.Sprintf("error reading record index: %v", err))
+		}
+		p.Index[index] = &FileStorageMetadata{
+			stored: true,
+			offset: offset,
+		}
+		record := &db.Record[IT, DT]{
+			Index: index,
 		}
 		record.Data, err = p.dataFromReader(p.DataReader, offset)
 		if err != nil {

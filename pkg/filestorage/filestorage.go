@@ -54,6 +54,7 @@ func NewTable[IT comparable, DT any](datadir string) *db.Table[IT, DT] {
 func NewFileStorage[IT comparable, DT any](datadir string) *FileStorage[IT, DT] {
 	p := &FileStorage[IT, DT]{
 		Datadir:       datadir,
+		Index:         make(map[IT]*FileStorageMetadata),
 		storeChannel:  make(chan *db.Record[IT, DT], 1),
 		deleteChannel: make(chan int64, 1),
 	}

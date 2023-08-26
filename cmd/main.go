@@ -29,10 +29,10 @@ func init() {
 	table = db.NewTable[string, Data](storage)
 
 	// Create a new REST service using the created database table.
-	service = rest.NewService[filestorage.FileStorageMetadata, Data](table)
+	service = rest.NewService[Data](table)
 
 	// Create a new REST server
-	server = rest.NewServer[filestorage.FileStorageMetadata, Data](service)
+	server = rest.NewServer[Data](service)
 }
 
 func main() {
