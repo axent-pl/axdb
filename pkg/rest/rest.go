@@ -45,6 +45,7 @@ func (s *Server[IT, DT]) Start(ctx context.Context) error {
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			done <- err
 		}
+		done <- nil
 	}()
 
 	for {
