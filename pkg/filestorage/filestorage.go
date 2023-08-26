@@ -24,7 +24,12 @@ type DataWrapper[DT any] struct {
 	D DT
 }
 
-type FileStorage[IT comparable, MT FileStorageMetadata, DT any] struct {
+type FileStorageMetadata struct {
+	stored bool
+	offset int64
+}
+
+type FileStorage[IT comparable, DT any] struct {
 	mutex          sync.Mutex
 	offset         int64
 	dataBlockSize  int
@@ -33,27 +38,23 @@ type FileStorage[IT comparable, MT FileStorageMetadata, DT any] struct {
 	DataReader     *os.File
 	IndexWriter    *os.File
 	IndexReader    *os.File
+	Index          map[IT]*FileStorageMetadata
 	storeWaitGroup sync.WaitGroup
-	storeChannel   chan *db.Record[IT, FileStorageMetadata, DT]
+	storeChannel   chan *db.Record[IT, DT]
 	deleteChannel  chan int64
 }
 
-type FileStorageMetadata struct {
-	stored bool
-	offset int64
-}
-
-func NewTable[IT comparable, DT any](datadir string) *db.Table[IT, FileStorageMetadata, DT] {
-	storage := NewFileStorage[IT, FileStorageMetadata, DT](datadir)
-	table := db.NewTable[IT, FileStorageMetadata, DT](storage)
+func NewTable[IT comparable, DT any](datadir string) *db.Table[IT, DT] {
+	storage := NewFileStorage[IT, DT](datadir)
+	table := db.NewTable[IT, DT](storage)
 	table.Open()
 	return table
 }
 
-func NewFileStorage[IT comparable, MT FileStorageMetadata, DT any](datadir string) *FileStorage[IT, MT, DT] {
-	p := &FileStorage[IT, MT, DT]{
+func NewFileStorage[IT comparable, DT any](datadir string) *FileStorage[IT, DT] {
+	p := &FileStorage[IT, DT]{
 		Datadir:       datadir,
-		storeChannel:  make(chan *db.Record[IT, FileStorageMetadata, DT], 1),
+		storeChannel:  make(chan *db.Record[IT, DT], 1),
 		deleteChannel: make(chan int64, 1),
 	}
 	if err := p.init(); err != nil {
@@ -63,7 +64,7 @@ func NewFileStorage[IT comparable, MT FileStorageMetadata, DT any](datadir strin
 	return p
 }
 
-func (p *FileStorage[IT, MT, DT]) init() error {
+func (p *FileStorage[IT, DT]) init() error {
 	var err error
 
 	// calculate dataa block size
@@ -111,28 +112,28 @@ func (p *FileStorage[IT, MT, DT]) init() error {
 	return nil
 }
 
-func (p *FileStorage[IT, MT, DT]) dataWriterOffset() int64 {
+func (p *FileStorage[IT, DT]) dataWriterOffset() int64 {
 	writerStat, _ := p.DataWriter.Stat()
 	return writerStat.Size()
 }
 
-func (p *FileStorage[IT, MT, DT]) indexWriterOffset() int64 {
+func (p *FileStorage[IT, DT]) indexWriterOffset() int64 {
 	writerStat, _ := p.IndexWriter.Stat()
 	return writerStat.Size()
 }
 
-func (p *FileStorage[IT, MT, DT]) processStoreChannel() {
+func (p *FileStorage[IT, DT]) processStoreChannel() {
 	for {
 		r := <-p.storeChannel
 
-		if !r.Metadata.stored {
-			r.Metadata.offset = p.offset
-			indexBytes := p.indexToBytes(r.Index, r.Metadata.offset)
+		if !p.Index[r.Index].stored {
+			p.Index[r.Index].offset = p.offset
+			indexBytes := p.indexToBytes(r.Index, p.Index[r.Index].offset)
 			p.IndexWriter.Write(indexBytes)
 		}
 
 		dataBytes := p.dataToBytes(r.Data, p.dataBlockSize)
-		_, err := p.DataWriter.WriteAt(dataBytes, r.Metadata.offset)
+		_, err := p.DataWriter.WriteAt(dataBytes, p.Index[r.Index].offset)
 		if err != nil {
 			panic(err)
 		}

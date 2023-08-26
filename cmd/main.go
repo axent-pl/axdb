@@ -15,18 +15,18 @@ type Data struct {
 }
 
 var (
-	server  *rest.Server[string, filestorage.FileStorageMetadata, Data]
-	service *rest.Service[string, filestorage.FileStorageMetadata, Data]
-	table   *db.Table[string, filestorage.FileStorageMetadata, Data]
+	server  *rest.Server[string, Data]
+	service *rest.Service[string, Data]
+	table   *db.Table[string, Data]
 )
 
 func init() {
 	cwd, _ := os.Getwd()
 	// Initialize the file storage for the application.
-	storage := filestorage.NewFileStorage[string, filestorage.FileStorageMetadata, Data](filepath.Join(cwd, "storage"))
+	storage := filestorage.NewFileStorage[string, Data](filepath.Join(cwd, "storage"))
 
 	// Create a new database table using the initialized file storage.
-	table = db.NewTable[string, filestorage.FileStorageMetadata, Data](storage)
+	table = db.NewTable[string, Data](storage)
 
 	// Create a new REST service using the created database table.
 	service = rest.NewService[filestorage.FileStorageMetadata, Data](table)

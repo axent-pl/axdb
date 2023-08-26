@@ -5,21 +5,21 @@ import (
 	"sync"
 )
 
-type Table[IT comparable, MT any, DT any] struct {
+type Table[IT comparable, DT any] struct {
 	mutex   sync.Mutex
-	storage StorageInterface[IT, MT, DT]
-	records map[IT]*Record[IT, MT, DT]
+	storage StorageInterface[IT, DT]
+	records map[IT]*Record[IT, DT]
 }
 
-func NewTable[IT comparable, MT any, DT any](storage StorageInterface[IT, MT, DT]) *Table[IT, MT, DT] {
-	tab := &Table[IT, MT, DT]{
+func NewTable[IT comparable, DT any](storage StorageInterface[IT, DT]) *Table[IT, DT] {
+	tab := &Table[IT, DT]{
 		storage: storage,
-		records: make(map[IT]*Record[IT, MT, DT]),
+		records: make(map[IT]*Record[IT, DT]),
 	}
 	return tab
 }
 
-func (tab *Table[IT, MT, DT]) List() []IT {
+func (tab *Table[IT, DT]) List() []IT {
 	var ret []IT
 	for index := range tab.records {
 		ret = append(ret, index)
@@ -27,7 +27,7 @@ func (tab *Table[IT, MT, DT]) List() []IT {
 	return ret
 }
 
-func (tab *Table[IT, MT, DT]) Read(index IT) (DT, error) {
+func (tab *Table[IT, DT]) Read(index IT) (DT, error) {
 	if rec, ok := tab.records[index]; ok {
 		return rec.Data, nil
 	} else {
@@ -35,21 +35,21 @@ func (tab *Table[IT, MT, DT]) Read(index IT) (DT, error) {
 	}
 }
 
-func (tab *Table[IT, MT, DT]) Insert(index IT, data DT) error {
+func (tab *Table[IT, DT]) Insert(index IT, data DT) error {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 
 	if _, ok := tab.records[index]; ok {
 		return fmt.Errorf("record with index %v already exists", index)
 	}
-	rec := NewRecord[IT, MT, DT](index, data)
+	rec := NewRecord[IT, DT](index, data)
 	tab.records[index] = rec
 	tab.storage.Store(rec)
 
 	return nil
 }
 
-func (tab *Table[IT, MT, DT]) Update(index IT, data DT) error {
+func (tab *Table[IT, DT]) Update(index IT, data DT) error {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 
@@ -61,7 +61,7 @@ func (tab *Table[IT, MT, DT]) Update(index IT, data DT) error {
 	return fmt.Errorf("record with index %v does not exist", index)
 }
 
-func (tab *Table[IT, MT, DT]) InsertOrUpdate(index IT, data DT) error {
+func (tab *Table[IT, DT]) InsertOrUpdate(index IT, data DT) error {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 
@@ -69,14 +69,14 @@ func (tab *Table[IT, MT, DT]) InsertOrUpdate(index IT, data DT) error {
 		rec.Data = data
 		tab.storage.Store(rec)
 	} else {
-		rec := NewRecord[IT, MT, DT](index, data)
+		rec := NewRecord[IT, DT](index, data)
 		tab.records[index] = rec
 		tab.storage.Store(rec)
 	}
 	return nil
 }
 
-func (tab *Table[IT, MT, DT]) Delete(index IT) error {
+func (tab *Table[IT, DT]) Delete(index IT) error {
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 
@@ -90,13 +90,13 @@ func (tab *Table[IT, MT, DT]) Delete(index IT) error {
 	return fmt.Errorf("record with index %v does not exist", index)
 }
 
-func (tab *Table[IT, MT, DT]) Open() {
+func (tab *Table[IT, DT]) Open() {
 	for _, record := range tab.storage.LoadAll() {
 		tab.records[record.Index] = record
 	}
 
 }
 
-func (tab *Table[IT, MT, DT]) Close() {
+func (tab *Table[IT, DT]) Close() {
 	tab.storage.Close()
 }

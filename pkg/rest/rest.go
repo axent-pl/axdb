@@ -13,20 +13,20 @@ import (
 	"github.com/prondos/axdb/pkg/db"
 )
 
-type Service[IT comparable, MT any, DT any] struct {
-	table *db.Table[string, MT, DT]
+type Service[IT comparable, DT any] struct {
+	table *db.Table[string, DT]
 }
 
-type Server[IT comparable, MT any, DT any] struct {
-	service *Service[IT, MT, DT]
+type Server[IT comparable, DT any] struct {
+	service *Service[IT, DT]
 }
 
-func NewServer[MT any, DT any](service *Service[string, MT, DT]) *Server[string, MT, DT] {
-	server := &Server[string, MT, DT]{service: service}
+func NewServer[MT any, DT any](service *Service[string, DT]) *Server[string, DT] {
+	server := &Server[string, DT]{service: service}
 	return server
 }
 
-func (s *Server[IT, MT, DT]) Start(ctx context.Context) error {
+func (s *Server[IT, DT]) Start(ctx context.Context) error {
 	// Initialize the Gin router.
 	router := gin.Default()
 
@@ -71,19 +71,19 @@ func (s *Server[IT, MT, DT]) Start(ctx context.Context) error {
 	}
 }
 
-func NewService[MT any, DT any](table *db.Table[string, MT, DT]) *Service[string, MT, DT] {
-	s := &Service[string, MT, DT]{
+func NewService[MT any, DT any](table *db.Table[string, DT]) *Service[string, DT] {
+	s := &Service[string, DT]{
 		table: table,
 	}
 	return s
 }
 
-func (s *Service[IT, MT, DT]) Index(c *gin.Context) {
+func (s *Service[IT, DT]) Index(c *gin.Context) {
 	indices := s.table.List()
 	c.IndentedJSON(http.StatusOK, indices)
 }
 
-func (s *Service[IT, MT, DT]) Get(c *gin.Context) {
+func (s *Service[IT, DT]) Get(c *gin.Context) {
 	key := c.Param("key")
 	rec, err := s.table.Read(key)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *Service[IT, MT, DT]) Get(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, rec)
 }
 
-func (s *Service[IT, MT, DT]) Put(c *gin.Context) {
+func (s *Service[IT, DT]) Put(c *gin.Context) {
 	var val DT
 	key := c.Param("key")
 	if err := c.BindJSON(&val); err != nil {

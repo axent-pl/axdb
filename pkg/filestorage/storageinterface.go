@@ -8,18 +8,15 @@ import (
 	"github.com/prondos/axdb/pkg/db"
 )
 
-func (p *FileStorage[IT, MT, DT]) LoadAll() []*db.Record[IT, FileStorageMetadata, DT] {
+func (p *FileStorage[IT, DT]) LoadAll() []*db.Record[IT, DT] {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	var records []*db.Record[IT, FileStorageMetadata, DT]
+	var records []*db.Record[IT, DT]
 
 	for {
 		index, offset, err := p.indexFromReader(p.IndexReader)
-		record := &db.Record[IT, FileStorageMetadata, DT]{
+		record := &db.Record[IT, DT]{
 			Index: index,
-			Metadata: &FileStorageMetadata{
-				offset: offset,
-			},
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -38,24 +35,24 @@ func (p *FileStorage[IT, MT, DT]) LoadAll() []*db.Record[IT, FileStorageMetadata
 	return records
 }
 
-func (p *FileStorage[IT, MT, DT]) Store(record *db.Record[IT, FileStorageMetadata, DT]) error {
+func (p *FileStorage[IT, DT]) Store(record *db.Record[IT, DT]) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	if record.Metadata == nil {
-		record.Metadata = &FileStorageMetadata{stored: false}
+	if _, ok := p.Index[record.Index]; !ok {
+		p.Index[record.Index] = &FileStorageMetadata{stored: false}
 	}
 	p.storeWaitGroup.Add(1)
 	p.storeChannel <- record
 	return nil
 }
 
-func (p *FileStorage[IT, MT, DT]) Delete(record db.Record[IT, FileStorageMetadata, DT]) error {
+func (p *FileStorage[IT, DT]) Delete(record db.Record[IT, DT]) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return nil
 }
 
-func (p *FileStorage[IT, MT, DT]) Close() {
+func (p *FileStorage[IT, DT]) Close() {
 	log.Print("Closing file storage")
 	p.storeWaitGroup.Wait()
 	if err := p.DataWriter.Close(); err != nil {
