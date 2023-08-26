@@ -4,10 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prondos/axdb/pkg/db"
@@ -42,31 +38,24 @@ func (s *Server[IT, DT]) Start(ctx context.Context) error {
 	}
 
 	// Initialize channels handling HTTP server shutdown
-	quit := make(chan os.Signal)
 	done := make(chan error)
-
-	// Wait for the SIGINT or SIGTERM signals
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	// Start HTTP server
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			done <- err
 		}
+		done <- nil
 	}()
 
 	for {
 		select {
-		// HTTP server stopped by itself
+		case <-ctx.Done():
+			log.Printf("HTTP server stopped by context\n")
+			return httpServer.Shutdown(context.Background())
 		case err := <-done:
 			log.Printf("HTTP server stopped by itself: %v\n", err)
 			return err
-		// Received SIGINT or SIGTERM signal
-		case <-quit:
-			log.Print("HTTP server stopped by signal\n")
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			return httpServer.Shutdown(ctx)
 		}
 	}
 }

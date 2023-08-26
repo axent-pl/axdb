@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/prondos/axdb/pkg/db"
 	"github.com/prondos/axdb/pkg/filestorage"
@@ -15,9 +17,10 @@ type Data struct {
 }
 
 var (
-	server  *rest.Server[string, Data]
-	service *rest.Service[string, Data]
-	table   *db.Table[string, Data]
+	signalChannel chan os.Signal
+	server        *rest.Server[string, Data]
+	service       *rest.Service[string, Data]
+	table         *db.Table[string, Data]
 )
 
 func init() {
@@ -33,6 +36,10 @@ func init() {
 
 	// Create a new REST server
 	server = rest.NewServer[Data](service)
+
+	// Configure signalChannel
+	signalChannel = make(chan os.Signal)
+	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM)
 }
 
 func main() {
@@ -40,8 +47,15 @@ func main() {
 	table.Open()
 	defer table.Close()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-signalChannel
+		cancel()
+	}()
+	defer cancel()
+
 	// start the server
-	err := server.Start(context.Background())
+	err := server.Start(ctx)
 	if err != nil {
 		panic(err)
 	}
