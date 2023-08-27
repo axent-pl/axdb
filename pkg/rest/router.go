@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 type route struct {
@@ -46,8 +47,10 @@ func (h *Router) handleFunc(method string, path string, handler handlerFunc) err
 func (h *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, route := range h.routes {
 		if r.Method == route.method && route.path.MatchString(r.URL.Path) {
-			log.Printf("%v: %v", r.Method, r.URL.Path)
+			start := time.Now()
 			route.handler(w, r)
+			took := time.Since(start)
+			log.Printf("[%v] %v %v [%s]", r.RemoteAddr, r.Method, r.URL.Path, took)
 			return
 		}
 	}
