@@ -2,10 +2,11 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/prondos/axdb/pkg/db"
 )
 
@@ -23,13 +24,10 @@ func NewServer[DT any](service *Service[string, DT]) *Server[string, DT] {
 }
 
 func (s *Server[IT, DT]) Start(ctx context.Context) error {
-	// Initialize the Gin router.
-	router := gin.Default()
-
-	// Define routes for the REST API.
-	router.GET("/items", s.service.Index)
-	router.GET("/items/:key", s.service.Get)
-	router.PUT("/items/:key", s.service.Put)
+	router := &Router{}
+	router.GET("^/items$", s.service.Index)
+	router.GET("^/items/[^/]+$", s.service.Get)
+	router.PUT("^/items/[^/]+$", s.service.Put)
 
 	// Initialize HTTP server
 	httpServer := &http.Server{
@@ -67,32 +65,47 @@ func NewService[DT any](table *db.Table[string, DT]) *Service[string, DT] {
 	return s
 }
 
-func (s *Service[IT, DT]) Index(c *gin.Context) {
+func (s *Service[IT, DT]) getKey(r *http.Request) string {
+	pathParts := strings.Split(r.URL.Path, "/")
+	return pathParts[len(pathParts)-1]
+}
+
+func (s *Service[IT, DT]) Index(w http.ResponseWriter, r *http.Request) {
 	indices := s.table.List()
-	c.IndentedJSON(http.StatusOK, indices)
-}
-
-func (s *Service[IT, DT]) Get(c *gin.Context) {
-	key := c.Param("key")
-	rec, err := s.table.Read(key)
+	indicesJson, err := json.Marshal(indices)
 	if err != nil {
-		c.AbortWithError(http.StatusNotFound, err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-
-	c.IndentedJSON(http.StatusOK, rec)
+	w.Write(indicesJson)
 }
 
-func (s *Service[IT, DT]) Put(c *gin.Context) {
-	var val DT
-	key := c.Param("key")
-	if err := c.BindJSON(&val); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+func (s *Service[IT, DT]) Get(w http.ResponseWriter, r *http.Request) {
+	key := s.getKey(r)
+	data, err := s.table.Read(key)
+	if err != nil {
+		http.Error(w, "Record not found", http.StatusNotFound)
 		return
 	}
-	if err := s.table.InsertOrUpdate(key, val); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+	dataJson, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	c.IndentedJSON(http.StatusOK, val)
+	w.Write(dataJson)
+}
+
+func (s *Service[IT, DT]) Put(w http.ResponseWriter, r *http.Request) {
+	var data *DT = new(DT)
+	key := s.getKey(r)
+	err := json.NewDecoder(r.Body).Decode(data)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if err := s.table.InsertOrUpdate(key, *data); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	s.Get(w, r)
 }
