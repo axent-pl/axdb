@@ -2,6 +2,12 @@
 
 This project was created to train myself in Go.
 
+## Starting the server
+
+```sh
+make run
+```
+
 ## Usage examples
 
 ### REST API
