@@ -31,7 +31,7 @@ func (tab *Table[IT, DT]) Read(index IT) (DT, error) {
 	if rec, ok := tab.records[index]; ok {
 		return rec.Data, nil
 	} else {
-		return *new(DT), fmt.Errorf("record with index %v not found", index)
+		return *new(DT), fmt.Errorf("%v %w", index, ErrNotFound)
 	}
 }
 
@@ -40,7 +40,7 @@ func (tab *Table[IT, DT]) Insert(index IT, data DT) error {
 	defer tab.mutex.Unlock()
 
 	if _, ok := tab.records[index]; ok {
-		return fmt.Errorf("record with index %v already exists", index)
+		return fmt.Errorf("%v %w", index, ErrExists)
 	}
 	rec := NewRecord[IT, DT](index, data)
 	tab.records[index] = rec
@@ -58,7 +58,7 @@ func (tab *Table[IT, DT]) Update(index IT, data DT) error {
 		tab.storage.Store(rec)
 	}
 
-	return fmt.Errorf("record with index %v does not exist", index)
+	return fmt.Errorf("%v %w", index, ErrNotFound)
 }
 
 func (tab *Table[IT, DT]) InsertOrUpdate(index IT, data DT) error {
@@ -87,7 +87,7 @@ func (tab *Table[IT, DT]) Delete(index IT) error {
 		delete(tab.records, index)
 	}
 
-	return fmt.Errorf("record with index %v does not exist", index)
+	return fmt.Errorf("%v %w", index, ErrNotFound)
 }
 
 func (tab *Table[IT, DT]) Open() {

@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -84,7 +85,11 @@ func (s *Service[IT, DT]) Get(w http.ResponseWriter, r *http.Request) {
 	key := s.getKey(r)
 	data, err := s.table.Read(key)
 	if err != nil {
-		http.Error(w, "Record not found", http.StatusNotFound)
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "Record not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	dataJson, err := json.Marshal(data)
@@ -104,6 +109,10 @@ func (s *Service[IT, DT]) Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.table.InsertOrUpdate(key, *data); err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, "Record not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
