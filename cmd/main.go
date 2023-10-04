@@ -26,7 +26,7 @@ var (
 func init() {
 	cwd, _ := os.Getwd()
 	// Initialize the file storage for the application.
-	storage := filestorage.NewFileStorage[string, Data](filepath.Join(cwd, "storage"))
+	storage := filestorage.MustNewFileStorage[string, Data](filestorage.WithDatadir(filepath.Join(cwd, "storage")))
 
 	// Create a new database table using the initialized file storage.
 	table = db.NewTable[string, Data](storage)

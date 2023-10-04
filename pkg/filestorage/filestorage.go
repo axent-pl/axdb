@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	DATAFILE string = "data.kvp"
-	INDXFILE string = "indx.kvp"
+	datafile string = "data.kvp"
+	indxfile string = "indx.kvp"
 )
 
 type IndexWrapper[IT comparable] struct {
@@ -44,24 +44,37 @@ type FileStorage[IT comparable, DT any] struct {
 	deleteChannel  chan int64
 }
 
-func NewTable[IT comparable, DT any](datadir string) *db.Table[IT, DT] {
-	storage := NewFileStorage[IT, DT](datadir)
-	table := db.NewTable[IT, DT](storage)
-	table.Open()
-	return table
+type FileStorageConfig struct {
+	datadir string
 }
 
-func NewFileStorage[IT comparable, DT any](datadir string) *FileStorage[IT, DT] {
+func WithDatadir(datadir string) func(*FileStorageConfig) {
+	return func(c *FileStorageConfig) {
+		c.datadir = datadir
+	}
+}
+
+func MustNewFileStorage[IT comparable, DT any](options ...func(*FileStorageConfig)) *FileStorage[IT, DT] {
+	calculatedOptions := &FileStorageConfig{
+		datadir: "storage",
+	}
+	for _, option := range options {
+		option(calculatedOptions)
+	}
+
 	p := &FileStorage[IT, DT]{
-		Datadir:       datadir,
+		Datadir:       calculatedOptions.datadir,
 		Index:         make(map[IT]*FileStorageMetadata),
 		storeChannel:  make(chan *db.Record[IT, DT], 1),
 		deleteChannel: make(chan int64, 1),
 	}
+
 	if err := p.init(); err != nil {
 		panic(err)
 	}
+
 	go p.processStoreChannel()
+
 	return p
 }
 
@@ -84,7 +97,7 @@ func (p *FileStorage[IT, DT]) init() error {
 	}
 
 	// init data file writer
-	dataPath := filepath.Join(p.Datadir, DATAFILE)
+	dataPath := filepath.Join(p.Datadir, datafile)
 	p.DataWriter, err = os.OpenFile(dataPath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
@@ -98,7 +111,7 @@ func (p *FileStorage[IT, DT]) init() error {
 	p.offset = p.dataWriterOffset()
 
 	// init index file writer
-	indexPath := filepath.Join(p.Datadir, INDXFILE)
+	indexPath := filepath.Join(p.Datadir, indxfile)
 	p.IndexWriter, err = os.OpenFile(indexPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		return err

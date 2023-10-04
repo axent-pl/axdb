@@ -6,12 +6,13 @@ import (
 )
 
 type Table[IT comparable, DT any] struct {
-	mutex   sync.Mutex
-	storage StorageInterface[IT, DT]
-	records map[IT]*Record[IT, DT]
+	storage Storager[IT, DT]
+
+	recordsMutex sync.Mutex
+	records      map[IT]*Record[IT, DT]
 }
 
-func NewTable[IT comparable, DT any](storage StorageInterface[IT, DT]) *Table[IT, DT] {
+func NewTable[IT comparable, DT any](storage Storager[IT, DT]) *Table[IT, DT] {
 	tab := &Table[IT, DT]{
 		storage: storage,
 		records: make(map[IT]*Record[IT, DT]),
@@ -36,8 +37,8 @@ func (tab *Table[IT, DT]) Read(index IT) (DT, error) {
 }
 
 func (tab *Table[IT, DT]) Insert(index IT, data DT) error {
-	tab.mutex.Lock()
-	defer tab.mutex.Unlock()
+	tab.recordsMutex.Lock()
+	defer tab.recordsMutex.Unlock()
 
 	if _, ok := tab.records[index]; ok {
 		return fmt.Errorf("%v %w", index, ErrExists)
@@ -50,8 +51,8 @@ func (tab *Table[IT, DT]) Insert(index IT, data DT) error {
 }
 
 func (tab *Table[IT, DT]) Update(index IT, data DT) error {
-	tab.mutex.Lock()
-	defer tab.mutex.Unlock()
+	tab.recordsMutex.Lock()
+	defer tab.recordsMutex.Unlock()
 
 	if rec, ok := tab.records[index]; ok {
 		rec.Data = data
@@ -62,8 +63,8 @@ func (tab *Table[IT, DT]) Update(index IT, data DT) error {
 }
 
 func (tab *Table[IT, DT]) InsertOrUpdate(index IT, data DT) error {
-	tab.mutex.Lock()
-	defer tab.mutex.Unlock()
+	tab.recordsMutex.Lock()
+	defer tab.recordsMutex.Unlock()
 
 	if rec, ok := tab.records[index]; ok {
 		rec.Data = data
@@ -77,8 +78,8 @@ func (tab *Table[IT, DT]) InsertOrUpdate(index IT, data DT) error {
 }
 
 func (tab *Table[IT, DT]) Delete(index IT) error {
-	tab.mutex.Lock()
-	defer tab.mutex.Unlock()
+	tab.recordsMutex.Lock()
+	defer tab.recordsMutex.Unlock()
 
 	if rec, ok := tab.records[index]; ok {
 		if err := tab.storage.Delete(*rec); err != nil {
