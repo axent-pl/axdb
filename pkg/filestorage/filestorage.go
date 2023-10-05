@@ -48,6 +48,12 @@ type FileStorageConfig struct {
 	datadir string
 }
 
+func NewFileStorageConfig() *FileStorageConfig {
+	return &FileStorageConfig{
+		datadir: "storage",
+	}
+}
+
 func WithDatadir(datadir string) func(*FileStorageConfig) {
 	return func(c *FileStorageConfig) {
 		c.datadir = datadir
@@ -55,9 +61,7 @@ func WithDatadir(datadir string) func(*FileStorageConfig) {
 }
 
 func MustNewFileStorage[IT comparable, DT any](options ...func(*FileStorageConfig)) *FileStorage[IT, DT] {
-	calculatedOptions := &FileStorageConfig{
-		datadir: "storage",
-	}
+	calculatedOptions := NewFileStorageConfig()
 	for _, option := range options {
 		option(calculatedOptions)
 	}
@@ -72,8 +76,6 @@ func MustNewFileStorage[IT comparable, DT any](options ...func(*FileStorageConfi
 	if err := p.init(); err != nil {
 		panic(err)
 	}
-
-	go p.processStoreChannel()
 
 	return p
 }
@@ -122,6 +124,8 @@ func (p *FileStorage[IT, DT]) init() error {
 	if err != nil {
 		return err
 	}
+
+	go p.processStoreChannel()
 
 	return nil
 }
