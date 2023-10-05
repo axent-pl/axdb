@@ -10,9 +10,9 @@ func (s *VoidStorage[IT, DT]) Delete(db.Record[IT, DT]) error {
 	return nil
 }
 
-func (s *VoidStorage[IT, DT]) LoadAll() []*db.Record[IT, DT] {
+func (s *VoidStorage[IT, DT]) LoadAll() ([]*db.Record[IT, DT], error) {
 	var records []*db.Record[IT, DT]
-	return records
+	return records, nil
 }
 
 func (s *VoidStorage[IT, DT]) Close() {

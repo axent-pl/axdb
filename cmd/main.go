@@ -44,9 +44,12 @@ func init() {
 
 func main() {
 	// Open the database table.
-	table.Open()
+	if err := table.Open(); err != nil {
+		os.Exit(1)
+	}
 	defer table.Close()
 
+	// Init cancellation context triggered by SIGINT or SIGTERM
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		<-signalChannel
@@ -55,8 +58,7 @@ func main() {
 	defer cancel()
 
 	// start the server
-	err := server.Start(ctx)
-	if err != nil {
-		panic(err)
+	if err := server.Start(ctx); err != nil {
+		os.Exit(1)
 	}
 }

@@ -1,6 +1,7 @@
 package filestorage
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -45,18 +46,26 @@ type FileStorage[IT comparable, DT any] struct {
 }
 
 type FileStorageConfig struct {
-	datadir string
+	datadir       string
+	parentContext context.Context
 }
 
 func NewFileStorageConfig() *FileStorageConfig {
 	return &FileStorageConfig{
-		datadir: "storage",
+		datadir:       "storage",
+		parentContext: context.Background(),
 	}
 }
 
 func WithDatadir(datadir string) func(*FileStorageConfig) {
 	return func(c *FileStorageConfig) {
 		c.datadir = datadir
+	}
+}
+
+func WithContext(ctx context.Context) func(*FileStorageConfig) {
+	return func(c *FileStorageConfig) {
+		c.parentContext = ctx
 	}
 }
 

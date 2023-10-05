@@ -91,11 +91,15 @@ func (tab *Table[IT, DT]) Delete(index IT) error {
 	return fmt.Errorf("%v %w", index, ErrNotFound)
 }
 
-func (tab *Table[IT, DT]) Open() {
-	for _, record := range tab.storage.LoadAll() {
+func (tab *Table[IT, DT]) Open() error {
+	records, err := tab.storage.LoadAll()
+	if err != nil {
+		return err
+	}
+	for _, record := range records {
 		tab.records[record.Index] = record
 	}
-
+	return nil
 }
 
 func (tab *Table[IT, DT]) Close() {

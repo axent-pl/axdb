@@ -1,14 +1,13 @@
 package filestorage
 
 import (
-	"fmt"
 	"io"
 	"log"
 
 	"github.com/prondos/axdb/pkg/db"
 )
 
-func (p *FileStorage[IT, DT]) LoadAll() []*db.Record[IT, DT] {
+func (p *FileStorage[IT, DT]) LoadAll() ([]*db.Record[IT, DT], error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	var records []*db.Record[IT, DT]
@@ -19,7 +18,7 @@ func (p *FileStorage[IT, DT]) LoadAll() []*db.Record[IT, DT] {
 			if err == io.EOF {
 				break
 			}
-			panic(fmt.Sprintf("error reading record index: %v", err))
+			return make([]*db.Record[IT, DT], 0), err
 		}
 		p.Index[index] = &FileStorageMetadata{
 			stored: true,
@@ -30,13 +29,13 @@ func (p *FileStorage[IT, DT]) LoadAll() []*db.Record[IT, DT] {
 		}
 		record.Data, err = p.dataFromReader(p.DataReader, offset)
 		if err != nil {
-			panic(fmt.Sprintf("error reading record data: %v", err))
+			return make([]*db.Record[IT, DT], 0), err
 		}
 
 		records = append(records, record)
 	}
 
-	return records
+	return records, nil
 }
 
 func (p *FileStorage[IT, DT]) Store(record *db.Record[IT, DT]) error {
