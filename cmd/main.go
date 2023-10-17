@@ -25,6 +25,9 @@ var (
 )
 
 func init() {
+	serverAddress := flag.String("serverAddress", ":8080", "Provider listening address for the server")
+	flag.Parse()
+
 	cwd, _ := os.Getwd()
 	// Initialize the file storage for the application.
 	storage := filestorage.MustNewFileStorage[string, Data](filestorage.WithDatadir(filepath.Join(cwd, "storage")))
@@ -36,7 +39,7 @@ func init() {
 	service = rest.NewService[Data](table)
 
 	// Create a new REST server
-	server = rest.NewServer[Data](service)
+	server = rest.NewServer[Data](*serverAddress, service)
 
 	// Configure signalChannel
 	signalChannel = make(chan os.Signal)
@@ -59,9 +62,7 @@ func main() {
 	defer cancel()
 
 	// start the server
-	serverAddress := flag.String("serverAddress", ":8080", "Provider listening address for the server")
-	flag.Parse()
-	if err := server.Start(ctx, *serverAddress); err != nil {
+	if err := server.Start(ctx); err != nil {
 		os.Exit(1)
 	}
 }

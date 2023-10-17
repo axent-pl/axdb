@@ -16,15 +16,19 @@ type Service[IT comparable, DT any] struct {
 }
 
 type Server[IT comparable, DT any] struct {
-	service *Service[IT, DT]
+	serverAddress string
+	service       *Service[IT, DT]
 }
 
-func NewServer[DT any](service *Service[string, DT]) *Server[string, DT] {
-	server := &Server[string, DT]{service: service}
+func NewServer[DT any](serverAddress string, service *Service[string, DT]) *Server[string, DT] {
+	server := &Server[string, DT]{
+		serverAddress: serverAddress,
+		service:       service,
+	}
 	return server
 }
 
-func (s *Server[IT, DT]) Start(ctx context.Context, serverAddress string) error {
+func (s *Server[IT, DT]) Start(ctx context.Context) error {
 	router := &Router{}
 	router.GET("^/items$", s.service.Index)
 	router.GET("^/items/[^/]+$", s.service.Get)
@@ -32,7 +36,7 @@ func (s *Server[IT, DT]) Start(ctx context.Context, serverAddress string) error 
 
 	// Initialize HTTP server
 	httpServer := &http.Server{
-		Addr:    serverAddress,
+		Addr:    s.serverAddress,
 		Handler: router,
 	}
 
