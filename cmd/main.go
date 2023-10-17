@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -58,7 +59,9 @@ func main() {
 	defer cancel()
 
 	// start the server
-	if err := server.Start(ctx); err != nil {
+	serverAddress := flag.String("serverAddress", ":8080", "Provider listening address for the server")
+	flag.Parse()
+	if err := server.Start(ctx, *serverAddress); err != nil {
 		os.Exit(1)
 	}
 }

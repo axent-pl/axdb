@@ -24,7 +24,7 @@ func NewServer[DT any](service *Service[string, DT]) *Server[string, DT] {
 	return server
 }
 
-func (s *Server[IT, DT]) Start(ctx context.Context) error {
+func (s *Server[IT, DT]) Start(ctx context.Context, serverAddress string) error {
 	router := &Router{}
 	router.GET("^/items$", s.service.Index)
 	router.GET("^/items/[^/]+$", s.service.Get)
@@ -32,7 +32,7 @@ func (s *Server[IT, DT]) Start(ctx context.Context) error {
 
 	// Initialize HTTP server
 	httpServer := &http.Server{
-		Addr:    ":8080",
+		Addr:    serverAddress,
 		Handler: router,
 	}
 
